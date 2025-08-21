@@ -1,0 +1,74 @@
+import pandas as pd
+import numpy as np
+from imblearn.combine import SMOTEENN
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import StandardScaler
+from tensorflow.keras.utils import to_categorical
+from tensorflow.keras.models import Sequential
+from tensorflow.keras.layers import Dense
+from tensorflow.keras.metrics import BinaryAccuracy, AUC, Precision, Recall
+
+
+# Load data
+data = pd.read_csv("/content/INSTAMART_fin_part1.csv")
+data.shape
+
+filtered_products = data.groupby('product_name').filter(lambda x: x['reordered'].mean() > 0.3)
+
+df = filtered_products
+
+df1=df.drop(['order_id','user_id','order_number','department','aisle','product_name','eval_set'], axis=1)
+
+X = df1.drop(columns="reordered", axis=1)
+y = df1['reordered']
+
+# Train/test split BEFORE encoding
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.15, random_state=42, stratify=y)
+
+# Apply SMOTE-ENN
+smote_enn = SMOTEENN(random_state=42)
+X_resampled, y_resampled = smote_enn.fit_resample(X_train, y_train)
+
+X_train.shape
+
+# One-hot encode after resampling
+y_resampled_oh = to_categorical(y_resampled)
+y_test_oh = to_categorical(y_test)
+
+# Scale AFTER resampling
+scaler = StandardScaler().fit(X_resampled)
+X_resampled_scaled = scaler.transform(X_resampled)
+X_test_scaled = scaler.transform(X_test)
+
+# Build model
+model = Sequential()
+model.add(Dense(810, input_dim=X_resampled_scaled.shape[1], activation="relu"))
+model.add(Dense(410, activation="relu"))
+model.add(Dense(125, activation="relu"))
+model.add(Dense(75, activation="relu"))
+model.add(Dense(35, activation="relu"))
+model.add(Dense(17, activation="relu"))
+model.add(Dense(2, activation="softmax"))
+
+model.compile(loss="categorical_crossentropy",
+              optimizer="adam",
+              metrics=[BinaryAccuracy(), AUC(name='auc'), Precision(), Recall()])
+
+# Train
+result_re = model.fit(X_resampled_scaled, y_resampled_oh,
+                      validation_data=(X_test_scaled, y_test_oh),
+                      epochs=30, batch_size=32)
+
+import pickle
+with open('scaler.pkl', 'wb') as f:
+    pickle.dump(scaler, f)
+
+result=model.evaluate(X_test_scaled,y_test_oh)
+
+y_pred_prob = model.predict(X_test_scaled)
+
+y_pred_prob
+
+#saving the model.
+
+model.save('my_model.h5')
