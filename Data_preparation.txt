@@ -1,0 +1,85 @@
+import pandas as pd
+import numpy as np
+import seaborn as sns
+import plotly.express as px
+import matplotlib.pyplot as plt
+from sklearn.preprocessing import LabelEncoder
+from sklearn import preprocessing
+
+#Data loading from csv file.
+data=pd.read_csv("C:/Guvi/Final_project/INSTAMART.csv")
+
+data.shape
+
+#checking duplicate
+data.duplicated().sum()
+
+#checking null value
+data.isnull().sum()
+
+data['days_since_prior_order']=data['days_since_prior_order'].fillna(0)
+
+data.isnull().sum()
+
+for i in data.columns:
+    print(i,data[i].nunique())
+
+df=data
+
+df.shape
+
+# Target Encoding for Category variable
+df['encode_dept']=df.groupby('department')['reordered'].transform('mean')
+df['encode_aisle']=df.groupby('aisle')['reordered'].transform('mean')
+
+
+df["product_name"]=df["product_name"].replace({"100% Juice Apple Juice": "100% Apple Juice", "100% Pure Apple Juice":"100% Apple Juice","100% Apple Juice, Original":"100% Apple Juice","100% Apple Juice Original":"100% Apple Juice","100% Juice, Apple":"100% Apple Juice"})
+df["product_name"]=df["product_name"].replace({"100% Juice Cranberry": "100% Cranberry Juice"})
+df["product_name"]=df["product_name"].replace({"100% Whole Wheat Bagel": "100% Whole Wheat Bagels"})
+df["product_name"]=df["product_name"].replace({"Organic Strawberry Lemon-ade": "Organic Strawberry Lemonade"})
+df["product_name"]=df["product_name"].replace({"Organic Russet Potato": "Organic Russet Potatoes"})
+df["product_name"]=df["product_name"].replace({"Organic Russian Banana Fingerling Potato": "Organic Russian Banana Fingerling Potatoes"})
+df["product_name"]=df["product_name"].replace({"Organic Romaine Heart": "Organic Romaine Hearts","Organic Sweet Pea":"Organic Sweet Peas"})
+df["product_name"]=df["product_name"].replace({"Organic White Onio": "Organic White Onions","Organic Yellow Mustard":"Organic Yellow Mustard  Seed","Organic Yellow Mustard Seed":"Organic Yellow Mustard  Seed"})
+df["product_name"]=df["product_name"].replace({"Organic Yellow Onion": "Organic Yellow Onions","Organic Yellow Peach":"Organic Yellow Peaches"})
+df["product_name"]=df["product_name"].replace({"100% Juice Apple Juice, No Sugar Added": "100% Apple Juice No Sugar Added","100% Juice No Sugar Added Apple":"100% Apple Juice No Sugar Added"})
+df["product_name"]=df["product_name"].replace({"100% Recycled Paper Towels": "100% Recycled White Paper Towels"})
+df["product_name"]=df["product_name"].replace({"24HR Capsules - 14 CT": "24HR Capsules"})
+df["product_name"]=df["product_name"].replace({'AA Batteries': "AA Alkaline Batteries",'AAA Alkaline Batteries': "AA Alkaline Batteries","AAA Batteries":"AA Alkaline Batteries"})
+df["product_name"]=df["product_name"].replace({"Acai Berry Chia Bars": "Acai Berry Chia Bar"})
+df["product_name"]=df["product_name"].replace({"Italian Dry Salami": "Italian Dry Salame"})
+df["product_name"]=df["product_name"].replace({"Albacore Solid White Tuna in Water": "Albacore Solid White Tuna In Water","Albacore Solid White Tuna":"Albacore Solid White Tuna In Water","Albacore White in Water Tuna":"Albacore Solid White Tuna In Water"})
+df["product_name"]=df["product_name"].replace({"Jalapeno Pepper": "Jalapeno Peppers"})
+df["product_name"]=df["product_name"].replace({"Jasmine Green": "Jasmine Green Tea","Jasmine Green Tea Bags":"Jasmine Green Tea","Jasmine Green Tea - 20 CT":"Jasmine Green Tea"})
+df["product_name"]=df["product_name"].replace({"Kettle Cooked Original Potato Chips": "Kettle Cooked Potato Chips Original"})
+df["product_name"]=df["product_name"].replace({"13 Gallon Drawstring Tall Kitchen Bags": "13 Gallon Tall Drawstring Kitchen Bags","":"13 Gallon Tall Drawstring Kitchen Bags","13 Gallon Tall Kitchen Drawstring Bags":"13 Gallon Tall Drawstring Kitchen Bags"})
+df["product_name"]=df["product_name"].replace({"Navel Orange": "Navel Oranges","Navel Oranges Bag":"Navel Oranges"})
+df["product_name"]=df["product_name"].replace({"Orange Juice 100% Juice": "Orange Juice","Orange Juice Concentrate":"Orange Juice"})
+df["product_name"]=df["product_name"].replace({"Organic AppleApple": "Organic Apples"})
+df["product_name"]=df["product_name"].replace({"Organic Broccoli Crown": "Organic Broccoli Crowns"})
+df["product_name"]=df["product_name"].replace({"Organic Brussel Sprouts": "Organic Brussels Sprouts"})
+df["product_name"]=df["product_name"].replace({"Organic Fat-Free Milk": "Organic Fat Free Milk"})
+df["product_name"]=df["product_name"].replace({"Organic Fuji Apple": "Organic Fuji Apples"})
+df["product_name"]=df["product_name"].replace({"Original Bar BBQ Sauce": "Original Barbecue Sauce","Original Barbeque Sauce":"Original Barbecue Sauce","Original BBQ Sauce":"Original Barbecue Sauce","Original Bbq Sauce":"Original Barbecue Sauce"})
+
+df["product_name"]=df["product_name"].replace({"Coconut Water Organic": "100% Organic Coconut Water","Coconut Water, Pure Organic":"100% Organic Coconut Water",
+                                               "Organic Coconut Water":"100% Organic Coconut Water","Original Coconut Water":"100% Organic Coconut Water","Organic Raw Coconut Water":"100% Organic Coconut Water"})
+
+df["product_name"]=df["product_name"].replace({"1% Lowfat Milk": "1% Low Fat Milk"})
+df["product_name"]=df["product_name"].replace({"805": "others","1664":"others","2010":"others"})
+
+
+df['encode_prod']=df.groupby('product_name')['reordered'].transform('mean')
+
+
+#user feature
+user_fea=df.groupby('user_id').agg(avg_days_btw_orders=('days_since_prior_order','mean'),total_orders=('order_number','max')).round().reset_index()
+
+df=df.merge(user_fea,on='user_id',how='left')
+
+#product feature
+prod_feq=df.groupby('product_id').agg(reorder_ratio=('reordered','mean'), number_of_times_reordered=('reordered','sum')).reset_index()
+df=df.merge(prod_feq,on='product_id',how='left')
+
+# Exporting data into csv file.
+df.to_csv("INSTAMART2.csv",index=False)
